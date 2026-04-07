@@ -1,5 +1,9 @@
-![Python](https://img.shields.io/badge/language-Python-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
+  ![Python](https://img.shields.io/badge/language-Python-blue?logo=python)
+  ![db](https://img.shields.io/badge/db-PostgreSQL-blue?logo=PostgreSQL)
+  ![contein](https://img.shields.io/badge/contein-Docker-blue?logo=docker)
+  ![API](https://img.shields.io/badge/API-FastAPI-green?logo=FastAPI)
+  ![License](https://img.shields.io/badge/license-MIT-green)
+
 
 # Система семантического поиска по базе знаний компании (MVP)
 
