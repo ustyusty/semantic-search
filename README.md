@@ -1,5 +1,9 @@
-![Python](https://img.shields.io/badge/language-Python-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Python](https://img.shields.io/badge/language-Python-blue?logo=python)
+![db](https://img.shields.io/badge/db-PostgreSQL-blue?logo=PostgreSQL)
+![contein](https://img.shields.io/badge/contein-Docker-blue?logo=docker)
+![API](https://img.shields.io/badge/API-FastAPI-green?logo=FastAPI)
+![License](https://img.shields.io/badge/license-MIT-green?logo=MIT)
+
 
 # Система семантического поиска по базе знаний компании (MVP)
 
@@ -7,7 +11,7 @@
 
 ## 🛠 Стек технологий
 
-* **Язык:** Python 3.10+
+* **Язык:** Python 3.14+
 * **ML/NLP:** `sentence-transformers` (PyTorch)
 * **База данных:** PostgreSQL
 * **Среда разработки:** VS Code
@@ -48,10 +52,10 @@
 
 ## Документация
 
-> **Примечание:** Раздел находится в стадии заполнения по мере разработки.
+> Раздел находится в стадии заполнения по мере разработки.
 
 ### Требования к окружению (Prerequisites)
-* Docker 29.x
+* Docker 29.2.x
 * Python 3.x
 * PostgreSQL 15.x
 
