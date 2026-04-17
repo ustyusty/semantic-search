@@ -2,10 +2,11 @@ import io
 import logging
 
 import numpy as np
-from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field
 from pypdf import PdfReader
 
+from app.core.auth import require_admin
 from app.core.embedder import embed
 
 MAX_PDF_SIZE = 15 * 1024 * 1024  # 15 MB
@@ -32,7 +33,7 @@ class SearchHit(BaseModel):
     score: float
 
 
-@router.post("/documents", response_model=AddDocumentOut, status_code=201)
+@router.post("/documents", response_model=AddDocumentOut, status_code=201, dependencies=[Depends(require_admin)])
 async def add_document(payload: AddDocumentIn, request: Request):
     repo = request.app.state.repo
     vec = embed(f"{payload.title}\n{payload.content}")
@@ -72,7 +73,7 @@ async def search(q: str, k: int = 3, request: Request = None):
     return hits
 
 
-@router.post("/documents/upload", response_model=AddDocumentOut, status_code=201)
+@router.post("/documents/upload", response_model=AddDocumentOut, status_code=201, dependencies=[Depends(require_admin)])
 async def upload_document(
     request: Request,
     file: UploadFile = File(...),
