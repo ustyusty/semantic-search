@@ -6,3 +6,5 @@ colorlog>=6.8
 pydantic>=2.8
 sentence-transformers>=3.0
 numpy>=1.26
+pypdf>=5.0
+python-multipart>=0.0.9

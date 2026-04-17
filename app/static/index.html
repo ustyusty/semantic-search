@@ -57,7 +57,12 @@
     </div>
 
     <div class="pane" id="pane-add">
-      <form id="addForm">
+      <div class="tabs" style="margin-bottom: 16px;">
+        <div class="tab active" data-mode="text">Текст</div>
+        <div class="tab" data-mode="pdf">PDF-файл</div>
+      </div>
+
+      <form id="addForm" class="mode-block" data-mode="text">
         <label for="title">Заголовок</label>
         <input id="title" type="text" placeholder="Например: Инструкция по оформлению отпуска" required />
         <label for="block">Раздел (необязательно)</label>
@@ -66,6 +71,17 @@
         <textarea id="content" placeholder="Вставьте сюда полный текст инструкции..." required></textarea>
         <button class="full" id="addBtn" type="submit">Сохранить в базу знаний</button>
       </form>
+
+      <form id="pdfForm" class="mode-block" data-mode="pdf" style="display:none;">
+        <label for="pdfTitle">Заголовок (необязательно, по умолчанию — имя файла)</label>
+        <input id="pdfTitle" type="text" placeholder="Оставьте пустым, чтобы взять из имени PDF" />
+        <label for="pdfBlock">Раздел (необязательно)</label>
+        <input id="pdfBlock" type="text" placeholder="Например: HR" />
+        <label for="pdfFile">PDF-файл (до 15 МБ, с извлекаемым текстом)</label>
+        <input id="pdfFile" type="file" accept="application/pdf,.pdf" required />
+        <button class="full" id="pdfBtn" type="submit">Загрузить PDF</button>
+      </form>
+
       <div class="status" id="addStatus"></div>
     </div>
   </div>
@@ -86,12 +102,22 @@
     }
     refreshCount();
 
-    document.querySelectorAll('.tab').forEach(t => {
+    document.querySelectorAll('.tabs .tab[data-pane]').forEach(t => {
       t.addEventListener('click', () => {
-        document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+        document.querySelectorAll('.tabs .tab[data-pane]').forEach(x => x.classList.remove('active'));
         document.querySelectorAll('.pane').forEach(x => x.classList.remove('active'));
         t.classList.add('active');
         document.getElementById('pane-' + t.dataset.pane).classList.add('active');
+      });
+    });
+
+    document.querySelectorAll('.tabs .tab[data-mode]').forEach(t => {
+      t.addEventListener('click', () => {
+        document.querySelectorAll('.tabs .tab[data-mode]').forEach(x => x.classList.remove('active'));
+        document.querySelectorAll('.mode-block').forEach(x => x.style.display = 'none');
+        t.classList.add('active');
+        document.querySelector(`.mode-block[data-mode="${t.dataset.mode}"]`).style.display = '';
+        document.getElementById('addStatus').textContent = '';
       });
     });
 
@@ -150,6 +176,41 @@
         addStatus.textContent = 'Ошибка: ' + String(err);
       } finally {
         addBtn.disabled = false;
+      }
+    });
+
+    const pdfForm = document.getElementById('pdfForm');
+    const pdfBtn = document.getElementById('pdfBtn');
+    pdfForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const file = document.getElementById('pdfFile').files[0];
+      if (!file) return;
+      const fd = new FormData();
+      fd.append('file', file);
+      const t = document.getElementById('pdfTitle').value.trim();
+      const b = document.getElementById('pdfBlock').value.trim();
+      if (t) fd.append('title', t);
+      if (b) fd.append('block', b);
+      pdfBtn.disabled = true;
+      addStatus.className = 'status';
+      addStatus.textContent = 'Извлекаю текст из PDF и считаю эмбеддинг…';
+      try {
+        const r = await fetch('/api/documents/upload', { method: 'POST', body: fd });
+        if (!r.ok) {
+          let msg = await r.text();
+          try { msg = JSON.parse(msg).detail || msg; } catch {}
+          throw new Error(msg);
+        }
+        const d = await r.json();
+        addStatus.className = 'status ok';
+        addStatus.textContent = `PDF добавлен (id=${d.id})`;
+        pdfForm.reset();
+        refreshCount();
+      } catch (err) {
+        addStatus.className = 'status err';
+        addStatus.textContent = 'Ошибка: ' + String(err.message || err);
+      } finally {
+        pdfBtn.disabled = false;
       }
     });
 

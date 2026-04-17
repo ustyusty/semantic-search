@@ -1,10 +1,14 @@
+import io
 import logging
 
 import numpy as np
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field
+from pypdf import PdfReader
 
 from app.core.embedder import embed
+
+MAX_PDF_SIZE = 15 * 1024 * 1024  # 15 MB
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["search"])
@@ -66,6 +70,38 @@ async def search(q: str, k: int = 3, request: Request = None):
             score=float(scores[i]),
         ))
     return hits
+
+
+@router.post("/documents/upload", response_model=AddDocumentOut, status_code=201)
+async def upload_document(
+    request: Request,
+    file: UploadFile = File(...),
+    title: str | None = Form(None),
+    block: str | None = Form(None),
+):
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Ожидается PDF-файл")
+
+    data = await file.read()
+    if len(data) > MAX_PDF_SIZE:
+        raise HTTPException(status_code=413, detail="Файл слишком большой (>15 МБ)")
+
+    try:
+        reader = PdfReader(io.BytesIO(data))
+        content = "\n\n".join((page.extract_text() or "").strip() for page in reader.pages).strip()
+    except Exception as e:
+        logger.warning("Ошибка парсинга PDF %s: %s", file.filename, e)
+        raise HTTPException(status_code=400, detail=f"Не удалось прочитать PDF: {e}")
+
+    if not content:
+        raise HTTPException(status_code=422, detail="PDF не содержит извлекаемого текста (возможно, скан без OCR)")
+
+    doc_title = (title or "").strip() or file.filename.rsplit(".", 1)[0]
+    repo = request.app.state.repo
+    vec = embed(f"{doc_title}\n{content}")
+    doc_id = await repo.add(doc_title, content, vec, block)
+    await request.app.state.refresh_index()
+    return AddDocumentOut(id=doc_id)
 
 
 @router.get("/documents/count")
