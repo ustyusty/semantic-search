@@ -46,15 +46,7 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. Загружаем корпоративные документы «Орион Технолоджис»
-
-```bash
-python -m scripts.seed --reset
-```
-
-Скрипт читает все JSON-файлы из `Orion-tecnologics-docs/`, считает эмбеддинги и складывает в БД.
-
-### 4. Запускаем сервис
+### 3. Запускаем сервис
 
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000
@@ -62,6 +54,21 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 Открываем [http://localhost:8000](http://localhost:8000) — веб-интерфейс,
 или [http://localhost:8000/docs](http://localhost:8000/docs) — Swagger.
+
+### 4. Наполняем базу знаний
+
+База стартует пустой. Добавить документы можно двумя способами:
+
+- **Через веб-интерфейс:** вкладка «Добавить документ» — заголовок, раздел (опционально), текст.
+- **Через API:**
+
+  ```bash
+  curl -X POST http://localhost:8000/api/documents \
+    -H 'Content-Type: application/json' \
+    -d '{"title": "Как оформить отпуск", "content": "Полный текст инструкции...", "block": "HR"}'
+  ```
+
+При добавлении эмбеддинг считается автоматически и индекс в памяти обновляется — документ сразу доступен для поиска.
 
 ## Как это работает
 
@@ -79,10 +86,8 @@ app/
   core/logger_setup.py
   db/db.py            — пул asyncpg
   db/requests.py      — DocumentRepo
-  static/index.html   — веб-интерфейс
+  static/index.html   — веб-интерфейс (поиск + загрузка документов)
   main.py             — сборка приложения, lifespan, индекс в памяти
-scripts/seed.py       — наполнение БД из Orion-tecnologics-docs/
-Orion-tecnologics-docs/ — синтетические документы вымышленной компании
 init.sql              — схема БД
 docker-compose.yml    — Postgres
 ```
