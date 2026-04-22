@@ -1,3 +1,4 @@
+# тут класс для работы с PostgreSQL через asyncpg (асинхронно)
 import os
 import asyncpg
 from dotenv import load_dotenv
@@ -5,12 +6,15 @@ import logging
 
 from app.decorators.log import log_exceptions
 
+# грузим переменные окружения из .env
 load_dotenv()
 logger = logging.getLogger(__name__)
 
 
+# класс-обёртка над соединением с БД
 class DataBase:
     def __init__(self):
+        # пул это набор соединений, чтобы не пересоздавать каждый раз
         self.pool: asyncpg.Pool | None = None
     
     @log_exceptions()
@@ -53,6 +57,7 @@ class DataBase:
             logger.debug(f"Execute Query: {SQLquery} | Args: {args} | Result: {result}")
             return result
         
+    # закрываем соединение когда приложение выключается
     async def close(self):
         if self.pool:
             await self.pool.close()
