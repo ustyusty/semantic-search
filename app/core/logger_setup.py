@@ -1,7 +1,8 @@
+# настраиваем красивый цветной логгер чтобы в консоли было удобно читать
 from dotenv import load_dotenv
 import os
 import logging
-from colorlog import ColoredFormatter 
+from colorlog import ColoredFormatter
 from functools import wraps
 
 load_dotenv()

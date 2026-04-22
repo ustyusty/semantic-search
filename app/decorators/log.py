@@ -1,7 +1,9 @@
+# декоратор чтобы автоматом ловить исключения и писать их в лог
 from functools import wraps
 import logging
 logger = logging.getLogger(__name__)
 
+# декоратор с параметром (поэтому тут три уровня вложенности функций)
 def log_exceptions(custom_msg:str = ""):
     """Логирует, ловит ошибки\n
     `custom_msg`: текст перед ошибкой\n
