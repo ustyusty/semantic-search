@@ -47,9 +47,15 @@ docker compose up -d
 ```
 
 ### 2. Устанавливаем зависимости
-
+![OS](https://img.shields.io/badge/mac-green?logo=apple)
 ```bash
 python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+```
+![OS](https://img.shields.io/badge/Windows-green?logo=microsoft-windows)
+```bash
+python -m venv .venv
+.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 
