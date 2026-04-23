@@ -7,7 +7,7 @@ from functools import wraps
 
 load_dotenv()
 def setup():
-    """Настройка логгера с цветами и уровнем из .env - LOG_LEVEL"""
+    """Настраивает логгер с цветным выводом и уровнем логирования из переменной окружения LOG_LEVEL."""
     log_level_str = os.getenv("LOG_LEVEL", "INFO")
     log_level = getattr(logging, log_level_str.upper())
 
