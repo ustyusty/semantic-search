@@ -1,4 +1,5 @@
 # тут все ручки (endpoint-ы) нашего API: добавить документ, поиск, загрузка pdf
+import asyncio
 import io
 import logging
 
@@ -12,6 +13,19 @@ from app.core.embedder import embed
 
 # ограничение на размер загружаемого pdf
 MAX_PDF_SIZE = 15 * 1024 * 1024  # 15 MB
+
+# параметры чанкирования PDF: модель режет вход до ~128 токенов,
+# поэтому большие документы разбиваем на куски по словам с перекрытием
+CHUNK_WORDS = 120
+CHUNK_OVERLAP = 20
+
+
+def chunk_text(text: str, size: int = CHUNK_WORDS, overlap: int = CHUNK_OVERLAP) -> list[str]:
+    words = text.split()
+    if not words:
+        return []
+    step = max(1, size - overlap)
+    return [" ".join(words[i:i + size]) for i in range(0, len(words), step)]
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["search"])
@@ -46,7 +60,7 @@ async def add_document(payload: AddDocumentIn, request: Request):
     :return: ID добавленного документа."""
     # считаем эмбеддинг (вектор) по тексту и кладём всё в базу
     repo = request.app.state.repo
-    vec = embed(f"{payload.title}\n{payload.content}")
+    vec = list(await asyncio.to_thread(embed, f"{payload.title}\n{payload.content}"))
     doc_id = await repo.add(payload.title, payload.content, vec, payload.block)
     await request.app.state.refresh_index()
     return AddDocumentOut(id=doc_id)
@@ -72,18 +86,23 @@ async def search(q: str, k: int = 3, request: Request = None):
     if not index["ids"]:
         return []
 
-    # превращаем запрос в вектор и считаем близость со всеми документами через матричное умножение
-    query_vec = np.asarray(embed(q), dtype=np.float32)
+    # превращаем запрос в вектор (в отдельном потоке чтобы не блокировать event loop)
+    # и считаем близость со всеми документами через матричное умножение
+    query_vec = np.asarray(await asyncio.to_thread(embed, q), dtype=np.float32)
     matrix = index["matrix"]
     scores = matrix @ query_vec
-    # берём топ-k самых похожих (сортируем по убыванию)
-    top = np.argsort(-scores)[:k]
+    # берём топ-k самых похожих (argpartition быстрее full sort при большом N)
+    if k >= len(scores):
+        top = np.argsort(-scores)
+    else:
+        part = np.argpartition(-scores, k)[:k]
+        top = part[np.argsort(-scores[part])]
 
     hits: list[SearchHit] = []
     for idx in top:
         i = int(idx)
         content = index["contents"][i]
-        snippet = content[:300] + ("…" if len(content) > 300 else "")
+        snippet = content
         hits.append(SearchHit(
             id=index["ids"][i],
             title=index["titles"][i],
@@ -132,11 +151,23 @@ async def upload_document(
 
     # если заголовок не передали - берём имя файла без расширения
     doc_title = (title or "").strip() or file.filename.rsplit(".", 1)[0]
+
+    # режем PDF на чанки и сохраняем каждый отдельной записью со своим эмбеддингом —
+    # иначе модель видит только первые ~100 слов всего документа
+    chunks = chunk_text(content)
     repo = request.app.state.repo
-    vec = embed(f"{doc_title}\n{content}")
-    doc_id = await repo.add(doc_title, content, vec, block)
+    last_id = None
+    total = len(chunks)
+    # считаем эмбеддинги пачкой в отдельном потоке — сильно быстрее, чем по одному
+    from app.core.embedder import embed_batch
+    titles = [f"{doc_title} (ч. {n}/{total})" if total > 1 else doc_title for n in range(1, total + 1)]
+    payloads = [f"{t}\n{c}" for t, c in zip(titles, chunks)]
+    vecs = await asyncio.to_thread(embed_batch, payloads)
+    for chunk_title, chunk, vec in zip(titles, chunks, vecs):
+        last_id = await repo.add(chunk_title, chunk, list(vec), block)
+
     await request.app.state.refresh_index()
-    return AddDocumentOut(id=doc_id)
+    return AddDocumentOut(id=last_id)
 
 
 # простая ручка - вернуть сколько всего документов в базе

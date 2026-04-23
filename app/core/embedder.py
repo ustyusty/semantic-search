@@ -3,43 +3,50 @@ import logging
 from functools import lru_cache
 from typing import Iterable
 
+import os
 import numpy as np
+import torch
 from sentence_transformers import SentenceTransformer
 
 logger = logging.getLogger(__name__)
 
-# название модельки, она мультиязычная - понимает и русский тоже
 MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
+torch.set_num_threads(max(1, os.cpu_count() or 1))
+torch.set_grad_enabled(False)
 
-# загружаем модель только один раз (lru_cache запоминает результат)
+
 @lru_cache(maxsize=1)
 def get_model() -> SentenceTransformer:
     """Загружает и возвращает модель для создания эмбеддингов.
 
     :return: Экземпляр модели SentenceTransformer."""
     logger.info("Загрузка модели эмбеддингов: %s", MODEL_NAME)
-    return SentenceTransformer(MODEL_NAME)
+    m = SentenceTransformer(MODEL_NAME)
+    m.eval()
+    return m
 
 
 # превратить один текст в вектор (нормализуем чтобы длина была 1)
-def embed(text: str) -> list[float]:
+@lru_cache(maxsize=4096)
+def embed(text: str) -> tuple[float, ...]:
     """Преобразует текст в вектор эмбеддинга.
 
     :param text: Входной текст.
-    :return: Вектор эмбеддинга в виде списка чисел с плавающей запятой.
+    :return: Вектор эмбеддинга в виде кортежа чисел с плавающей запятой.
         """
-    vec = get_model().encode(text, normalize_embeddings=True)
-    return vec.astype(np.float32).tolist()
+    with torch.inference_mode():
+        vec = get_model().encode(text, normalize_embeddings=True, show_progress_bar=False)
+    return tuple(vec.astype(np.float32).tolist())
 
 
-# то же самое но сразу для пачки текстов - так быстрее
 def embed_batch(texts: Iterable[str]) -> list[list[float]]:
     """Преобразует пачку текстов в векторы эмбеддингов.
 
     :param texts: Итерабельный объект с входными текстами.
     :return: Список векторов эмбеддингов, каждый в виде списка чисел с плавающей запятой."""
-    vecs = get_model().encode(list(texts), normalize_embeddings=True, batch_size=16)
+    with torch.inference_mode():
+        vecs = get_model().encode(list(texts), normalize_embeddings=True, batch_size=32, show_progress_bar=False)
     return [v.astype(np.float32).tolist() for v in vecs]
 
 

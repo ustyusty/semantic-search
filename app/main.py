@@ -5,13 +5,14 @@ from pathlib import Path
 
 import numpy as np
 from fastapi import Depends, FastAPI
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 # подключаем все наши модули из папки app
 from app.api.api import router as api_router
 from app.core.auth import require_admin
-from app.core.embedder import get_model
+from app.core.embedder import embed, get_model
 from app.core.logger_setup import setup
 from app.db.db import DataBase
 from app.db.requests import DocumentRepo
@@ -57,6 +58,7 @@ async def lifespan(app: FastAPI):
     app.state.repo = DocumentRepo(db)
     app.state.refresh_index = lambda: refresh_index(app)
     get_model()
+    embed("прогрев модели")
     await refresh_index(app)
     yield
     await db.close()
@@ -64,6 +66,7 @@ async def lifespan(app: FastAPI):
 
 # создаём само приложение FastAPI и подключаем роуты из api.py
 app = FastAPI(title="Semantic Search", lifespan=lifespan)
+app.add_middleware(GZipMiddleware, minimum_size=500)
 app.include_router(api_router)
 
 
