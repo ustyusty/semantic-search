@@ -27,6 +27,9 @@ TEMPLATES_DIR = Path(__file__).parent / "templates"
 
 # функция которая обновляет индекс документов (берёт всё из БД и складывает в память)
 async def refresh_index(app: FastAPI):
+    """Обновляет индекс документов в памяти приложения.
+
+    :param app: Экземпляр FastAPI приложения."""
     docs = await app.state.repo.all()
     if docs:
         matrix = np.asarray([d["embedding"] for d in docs], dtype=np.float32)
@@ -45,6 +48,9 @@ async def refresh_index(app: FastAPI):
 # lifespan - это штука которая выполняется при старте и остановке приложения
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Управляет жизненным циклом приложения: инициализация и закрытие ресурсов.
+
+    :param app: Экземпляр FastAPI приложения."""
     db = DataBase()
     await db.create_pool()
     app.state.db = db
@@ -64,6 +70,10 @@ app.include_router(api_router)
 # страница админки, чтобы её открыть нужно ввести логин и пароль
 @app.get("/admin", include_in_schema=False)
 async def admin_page(_: str = Depends(require_admin)):
+    """Возвращает страницу админки для авторизованных пользователей.
+    
+    :param _: Имя пользователя (не используется).
+    :return: HTML-страница админки."""
     return FileResponse(TEMPLATES_DIR / "admin.html")
 
 

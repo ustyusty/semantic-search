@@ -39,6 +39,11 @@ class SearchHit(BaseModel):
 # ручка для добавления нового документа (только для админа)
 @router.post("/documents", response_model=AddDocumentOut, status_code=201, dependencies=[Depends(require_admin)])
 async def add_document(payload: AddDocumentIn, request: Request):
+    """Добавляет новый документ в базу данных.
+
+    :param payload: Данные документа (заголовок, содержание, блок).
+    :param request: Объект запроса FastAPI.
+    :return: ID добавленного документа."""
     # считаем эмбеддинг (вектор) по тексту и кладём всё в базу
     repo = request.app.state.repo
     vec = embed(f"{payload.title}\n{payload.content}")
@@ -50,6 +55,12 @@ async def add_document(payload: AddDocumentIn, request: Request):
 # ручка поиска - основная фишка проекта, ищет похожие доки по смыслу
 @router.get("/search", response_model=list[SearchHit])
 async def search(q: str, k: int = 3, request: Request = None):
+    """Выполняет семантический поиск документов по запросу.
+
+    :param q: Поисковый запрос.
+    :param k: Количество результатов (от 1 до 20).
+    :param request: Объект запроса FastAPI.
+    :return: Список найденных документов с оценками."""
     # проверяем что запрос не пустой
     q = q.strip()
     if not q:
@@ -91,6 +102,13 @@ async def upload_document(
     title: str | None = Form(None),
     block: str | None = Form(None),
 ):
+    """Загружает PDF-файл, извлекает текст и сохраняет как документ.
+
+    :param request: Объект запроса FastAPI.
+    :param file: Загружаемый PDF-файл.
+    :param title: Заголовок документа (опционально).
+    :param block: Блок документа (опционально).
+    :return: ID добавленного документа."""
     # проверяем что это именно пдф-ка
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Ожидается PDF-файл")
@@ -124,4 +142,8 @@ async def upload_document(
 # простая ручка - вернуть сколько всего документов в базе
 @router.get("/documents/count")
 async def documents_count(request: Request):
+    """Возвращает количество документов в базе данных.
+    
+    :param request: Объект запроса FastAPI.
+    :return: Словарь с количеством документов."""
     return {"count": await request.app.state.repo.count()}

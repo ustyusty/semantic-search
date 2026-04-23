@@ -10,6 +10,10 @@ security = HTTPBasic()
 
 # функция-депенденси которая проверяет что пришёл правильный логин и пароль
 def require_admin(credentials: HTTPBasicCredentials = Depends(security)) -> str:
+    """Проверяет аутентификацию администратора через HTTP Basic Auth.
+    
+    :param credentials: Учётные данные пользователя.
+    :return: Имя пользователя при успешной аутентификации."""
     # берём логин и пароль из переменных окружения
     expected_user = os.getenv("ADMIN_USER", "admin")
     expected_password = os.getenv("ADMIN_PASSWORD", "")

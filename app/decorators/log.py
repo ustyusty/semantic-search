@@ -5,9 +5,9 @@ logger = logging.getLogger(__name__)
 
 # декоратор с параметром (поэтому тут три уровня вложенности функций)
 def log_exceptions(custom_msg:str = ""):
-    """Логирует, ловит ошибки\n
-    `custom_msg`: текст перед ошибкой\n
-    """
+    """Декоратор для логирования исключений в асинхронных функциях.
+    
+    :param custom_msg: Пользовательское сообщение перед ошибкой."""
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):

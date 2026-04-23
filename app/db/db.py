@@ -19,7 +19,7 @@ class DataBase:
     
     @log_exceptions()
     async def create_pool(self):
-        """Создание пулла соединения с бд"""
+        """Создаёт пул соединений с базой данных PostgreSQL."""
         self.pool = await asyncpg.create_pool(
             user=os.getenv("DB_USER"),
             password=os.getenv("DB_PASSWORD"),
@@ -31,9 +31,11 @@ class DataBase:
         
     @log_exceptions("Ошибка SQL в fetch")
     async def fetchall(self, SQLquery: str, *args):
-        """Принимает `str` запрос, args\n
-        Возвращает  `(asyncpg.Record)`"""
+        """Выполняет SQL-запрос и возвращает все результаты.
 
+        :param SQLquery: SQL-запрос.
+        :param args: Параметры запроса.
+        :return: Список записей asyncpg.Record."""
         if not self.pool:
             logger.error("pool does not exist")
             return
@@ -45,8 +47,11 @@ class DataBase:
     
     @log_exceptions("Ошибка SQL в execute")
     async def execute(self, SQLquery: str, *args):
-        """Принимает `str` запрос, args\n
-        Возвращает `str`"""
+        """Выполняет SQL-запрос без возврата результатов.
+        
+        :param SQLquery: SQL-запрос.
+        :param args: Параметры запроса.
+        :return: Строка с результатом выполнения."""
         if not self.pool:
             logger.error("pool does not exist")
             return
@@ -59,6 +64,7 @@ class DataBase:
         
     # закрываем соединение когда приложение выключается
     async def close(self):
+        """Закрывает пул соединений с базой данных."""
         if self.pool:
             await self.pool.close()
             logger.info("Соединение с БД закрыто")
